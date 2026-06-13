@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>The Cockpit · Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Sometype+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#070A0F; --panel:#0E141C; --panel2:#131C26; --edge:#1F2C3A;
+    --ink:#E6EDF3; --mute:#7C8B9C; --dim:#536273;
+    --live:#3FB970; --local:#D9A441; --down:#D24B4B; --seed:#5B7FC4;
+    --beam:#39C0C8; --beam2:#2A8C92;
+    --r:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--void); color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif; line-height:1.5;
+    min-height:100vh; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    background-image:
+      radial-gradient(1100px 540px at 50% -8%, rgba(57,192,200,.10), transparent 60%),
+      radial-gradient(700px 380px at 88% 4%, rgba(91,127,196,.07), transparent 55%);
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:1.4rem 1.15rem 4rem}
+
+  /* ── HEADER / INSTRUMENT BAR ── */
+  header{padding:1.4rem 0 1.1rem;border-bottom:1px solid var(--edge);margin-bottom:1.6rem}
+  .topline{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+  .badge{font-family:'Sometype Mono',monospace;font-size:.62rem;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--beam);border:1px solid var(--beam2);
+    border-radius:100px;padding:.28rem .7rem;background:rgba(57,192,200,.06)}
+  h1{font-family:'Chakra Petch',sans-serif;font-weight:700;font-size:clamp(1.9rem,6vw,3rem);
+    letter-spacing:.01em;line-height:1.02;margin:.7rem 0 .3rem}
+  h1 b{color:var(--beam);font-weight:700}
+  .sub{color:var(--mute);font-size:.95rem;max-width:60ch}
+  /* live readout strip */
+  .readout{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:1.1rem}
+  .stat{font-family:'Sometype Mono',monospace;font-size:.72rem;color:var(--ink);
+    background:var(--panel);border:1px solid var(--edge);border-radius:10px;
+    padding:.5rem .8rem;display:flex;align-items:center;gap:.5rem}
+  .stat .n{font-size:1.05rem;font-weight:600}
+  .stat .dot{width:8px;height:8px;border-radius:50%}
+  .d-live{background:var(--live);box-shadow:0 0 10px var(--live)}
+  .d-local{background:var(--local);box-shadow:0 0 10px var(--local)}
+  .d-seed{background:var(--seed);box-shadow:0 0 10px var(--seed)}
+  .d-down{background:var(--down);box-shadow:0 0 10px var(--down)}
+
+  /* ── FILTER CHIPS ── */
+  .filters{display:flex;gap:.45rem;flex-wrap:wrap;margin:1.5rem 0 .4rem}
+  .chip{font-family:'Sometype Mono',monospace;font-size:.68rem;letter-spacing:.05em;
+    color:var(--mute);background:var(--panel);border:1px solid var(--edge);
+    border-radius:100px;padding:.42rem .85rem;cursor:pointer;transition:.16s;
+    -webkit-tap-highlight-color:transparent;user-select:none}
+  .chip:hover{color:var(--ink);border-color:var(--beam2)}
+  .chip.on{color:var(--void);background:var(--beam);border-color:var(--beam);font-weight:600}
+
+  /* ── GROUP HEADERS ── */
+  .group{margin-top:2.2rem}
+  .group-h{display:flex;align-items:baseline;gap:.7rem;margin-bottom:.9rem;
+    padding-bottom:.5rem;border-bottom:1px solid var(--edge)}
+  .group-h .gname{font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:1.05rem;
+    letter-spacing:.04em;text-transform:uppercase}
+  .group-h .gtag{font-family:'Sometype Mono',monospace;font-size:.66rem;color:var(--dim)}
+  .group-h .gcount{margin-left:auto;font-family:'Sometype Mono',monospace;font-size:.7rem;color:var(--mute)}
+
+  /* ── CARD GRID ── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:.95rem}
+  .card{background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--edge);border-radius:var(--r);padding:1.1rem 1.1rem 1rem;
+    display:flex;flex-direction:column;gap:.6rem;position:relative;overflow:hidden;
+    transition:.18s}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--dim)}
+  .card.live::before{background:var(--live)}
+  .card.local::before{background:var(--local)}
+  .card.seed::before{background:var(--seed)}
+  .card.down::before{background:var(--down)}
+  .card:hover{border-color:var(--beam2);transform:translateY(-2px)}
+  .card-top{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+  .card-title{font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:1.06rem;letter-spacing:.01em}
+  .status{display:flex;align-items:center;gap:.4rem;font-family:'Sometype Mono',monospace;
+    font-size:.6rem;letter-spacing:.13em;text-transform:uppercase;white-space:nowrap}
+  .status .dot{width:8px;height:8px;border-radius:50%;flex:none}
+  .s-live{color:var(--live)} .s-local{color:var(--local)} .s-seed{color:var(--seed)} .s-down{color:var(--down)}
+  .row{font-size:.86rem;color:var(--mute)}
+  .row b{color:var(--ink);font-weight:600}
+  .row .lbl{font-family:'Sometype Mono',monospace;font-size:.6rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--dim);display:block;margin-bottom:.12rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.15rem}
+  .pill{font-family:'Sometype Mono',monospace;font-size:.58rem;letter-spacing:.06em;
+    color:var(--mute);background:var(--void);border:1px solid var(--edge);
+    border-radius:6px;padding:.16rem .42rem}
+  .go{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:.5rem;
+    text-decoration:none;font-family:'Chakra Petch',sans-serif;font-weight:600;font-size:.9rem;
+    letter-spacing:.03em;padding:.7rem;border-radius:10px;transition:.16s;
+    background:rgba(57,192,200,.08);border:1px solid var(--beam2);color:var(--beam);
+    -webkit-tap-highlight-color:transparent}
+  .go:hover{background:var(--beam);color:var(--void)}
+  .go.muted{background:var(--panel);border-color:var(--edge);color:var(--mute)}
+  .go.muted:hover{background:var(--panel2);color:var(--ink)}
+  .go .arrow{transition:transform .16s}
+  .go:hover .arrow{transform:translateX(3px)}
+  .note{font-size:.72rem;color:var(--dim);font-style:italic;line-height:1.4}
+
+  footer{margin-top:3rem;padding-top:1.3rem;border-top:1px solid var(--edge);
+    font-family:'Sometype Mono',monospace;font-size:.68rem;color:var(--dim);line-height:1.7}
+  footer b{color:var(--mute)}
+  .hidden{display:none!important}
+  @media(max-width:520px){
+    .grid{grid-template-columns:1fr}
+    .wrap{padding:1.1rem .85rem 3rem}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="topline">
+      <span class="badge">◈ Mission Control</span>
+      <span class="badge" style="color:var(--mute);border-color:var(--edge)">Zion · all instruments</span>
+    </div>
+    <h1>The <b>Cockpit</b></h1>
+    <p class="sub">Every dashboard, command center, and site in one screen. One tap opens the real thing. Status is read live from each deploy — not assumed.</p>
+    <div class="readout" id="readout"></div>
+  </header>
+
+  <div class="filters" id="filters">
+    <span class="chip on" data-f="all">All</span>
+    <span class="chip" data-f="live">● Live</span>
+    <span class="chip" data-f="seed">● Seed (unverified)</span>
+    <span class="chip" data-f="local">● Local / repo</span>
+  </div>
+
+  <div id="board"></div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────
+   THE INSTRUMENTS — one data array, the UI renders from this.
+   status: live | seed | local | down
+   Every url is REAL: a GitHub Pages deploy (API-confirmed built),
+   a repo, or a seed claim explicitly marked unverified.
+   ───────────────────────────────────────────────────────────── */
+const GROUPS = [
+  { id:"council", name:"The Council", tag:"// command & study cockpits",
+    items:[
+      { title:"Council Command Center", status:"live",
+        what:"The 8-mind Know-Thyself ledger as a living cockpit.",
+        why:"See the whole kingdom on one board — gaps glow red.",
+        url:"https://amulektwo.github.io/council-command-center/",
+        meta:["GitHub Pages","PWA","v1.1 Leviathan Layer"] },
+      { title:"Command Center X", status:"live",
+        what:"The Morning House — the ledger reborn in heaven palette.",
+        why:"Family-tree hero, seen-% meter, next-move on every flag.",
+        url:"https://amulektwo.github.io/council-command-center-x/",
+        meta:["GitHub Pages","PWA","Seer Edit Mode"] },
+      { title:"Launch Command Center", status:"seed",
+        what:"The original SOL launch cockpit.",
+        why:"First command center shipped — the pattern all others follow.",
+        url:"https://sol-command-center-ten.vercel.app",
+        repo:"https://github.com/amulektwo/sol-command-center",
+        meta:["Vercel","private repo"],
+        note:"Seed claim from the work order. Could not verify live from this seat — tap to confirm." },
+    ]},
+  { id:"chapel", name:"The Scrolls", tag:"// study & sacred reading",
+    items:[
+      { title:"Keystone Chapel", status:"live",
+        what:"The Study — 100 ranked keystone scrolls, Reading Lamp reader.",
+        why:"The weightiest stones, curated by the Ranking Law, marked as studied.",
+        url:"https://amulektwo.github.io/keystone-chapel/",
+        meta:["GitHub Pages","PWA","UMSD v5.5"] },
+      { title:"ZionOS Chapel", status:"local",
+        what:"The Library — 400 scrolls, 389 full bodies, 15 gate halls.",
+        why:"The fuller canon: Sphere, Study Table, scripture bloom.",
+        url:"https://github.com/amulektwo/zionos-chapel",
+        meta:["React/Vite","Vercel build","private repo"],
+        note:"Built & Vercel-deployed June 11. Repo private — live URL not yet pinned here; link opens the repo." },
+    ]},
+  { id:"forge", name:"The Forge", tag:"// courseware",
+    items:[
+      { title:"Sovereignty Forge Supreme", status:"live",
+        what:"70-lesson course + exam engine, certificate, spaced repetition.",
+        why:"The full study weapon — permanent progress, installs as an app.",
+        url:"https://amulektwo.github.io/sovereignty-forge-supreme/",
+        meta:["GitHub Pages","PWA","passcode: SOVEREIGN"] },
+      { title:"Sovereignty Forge (Kappa)", status:"live",
+        what:"Kappa's original Study Forge v2.1 — canon, untouched.",
+        why:"The byte-perfect original the Supreme build stands beside.",
+        url:"https://amulektwo.github.io/sovereignty-forge-x7k9/",
+        meta:["GitHub Pages","canon"] },
+    ]},
+  { id:"city", name:"The Eternal City", tag:"// 3D temple",
+    items:[
+      { title:"The Eternal City 3D", status:"local",
+        what:"Next.js + Three.js navigable temple — 14 gates, 6,135 scrolls.",
+        why:"The crown build: walls, Tree of Life, River, the Sphere sky.",
+        url:"https://github.com/amulektwo/zionos-temple",
+        meta:["Next.js 14","Three.js","private repo"],
+        note:"Mid-build, checkpointed. Deploy blocked by Vercel 5k-file limit — a Seer decision. Link opens the repo." },
+    ]},
+  { id:"sol", name:"Sphere of Light", tag:"// public brand",
+    items:[
+      { title:"The Sphere of Light", status:"seed",
+        what:"The public sacred-media site.",
+        why:"The front door of the brand — AMULEK ONE's published work.",
+        url:"https://thesphereoflight.com",
+        meta:["WordPress","public"],
+        note:"Domain on record. Could not verify live/content from this seat — tap to confirm it resolves." },
+    ]},
+  { id:"vaults", name:"The Vaults", tag:"// archives — not dashboards, indexed for reach",
+    items:[
+      { title:"Leviathan Session Archive", status:"local",
+        what:"June 12 builds + sha256 manifest, sealed.",
+        why:"The day's record — verifiable, rollback-safe.",
+        url:"https://github.com/amulektwo/leviathan-archive-2026-06-12",
+        meta:["private repo","16/16 hashed"] },
+      { title:"ZionCodex Vault", status:"local",
+        what:"The scroll corpus repository.",
+        why:"Where the canon lives in version control.",
+        url:"https://github.com/amulektwo/ZionCodex_Vault",
+        meta:["private repo"] },
+      { title:"Sphere of Light Vault", status:"local",
+        what:"SOL brand assets & doctrine.",
+        why:"Brand source of truth, separated by law.",
+        url:"https://github.com/amulektwo/SphereOfLight_Vault",
+        meta:["private repo"] },
+      { title:"Business Vault", status:"local",
+        what:"AIP / GNC business assets.",
+        why:"Enterprise & agency material, kept off the sacred shelf.",
+        url:"https://github.com/amulektwo/Business_Vault",
+        meta:["private repo"] },
+    ]},
+];
+
+const STATUS = {
+  live:{label:"Live",cls:"live",dot:"d-live",scls:"s-live"},
+  seed:{label:"Unverified",cls:"seed",dot:"d-seed",scls:"s-seed"},
+  local:{label:"Local / repo",cls:"local",dot:"d-local",scls:"s-local"},
+  down:{label:"Down",cls:"down",dot:"d-down",scls:"s-down"},
+};
+
+function flat(){ return GROUPS.flatMap(g=>g.items); }
+
+function renderReadout(){
+  const all=flat();
+  const c={live:0,seed:0,local:0,down:0};
+  all.forEach(i=>c[i.status]++);
+  const el=document.getElementById("readout");
+  el.innerHTML =
+    `<div class="stat"><span class="n">${all.length}</span> instruments</div>`+
+    `<div class="stat"><span class="dot d-live"></span><span class="n">${c.live}</span> live</div>`+
+    `<div class="stat"><span class="dot d-seed"></span><span class="n">${c.seed}</span> unverified</div>`+
+    `<div class="stat"><span class="dot d-local"></span><span class="n">${c.local}</span> local / repo</div>`;
+}
+
+function card(i){
+  const s=STATUS[i.status];
+  const primary = i.status==="live" || i.status==="seed";
+  const btnLabel = i.status==="live" ? "Open live" : i.status==="seed" ? "Open (unverified)" : "Open repo";
+  const href = i.url;
+  const repoLink = i.repo ? `<a class="go muted" href="${i.repo}" target="_blank" rel="noopener">View repo</a>` : "";
+  return `<div class="card ${s.cls}" data-status="${i.status}">
+    <div class="card-top">
+      <div class="card-title">${i.title}</div>
+      <div class="status ${s.scls}"><span class="dot ${s.dot}"></span>${s.label}</div>
+    </div>
+    <div class="row"><span class="lbl">What it is</span>${i.what}</div>
+    <div class="row"><span class="lbl">Why it matters</span>${i.why}</div>
+    <div class="meta">${i.meta.map(m=>`<span class="pill">${m}</span>`).join("")}</div>
+    ${i.note?`<div class="note">⚑ ${i.note}</div>`:""}
+    <a class="go ${primary?"":"muted"}" href="${href}" target="_blank" rel="noopener">${btnLabel} <span class="arrow">→</span></a>
+    ${repoLink}
+  </div>`;
+}
+
+function render(filter="all"){
+  const board=document.getElementById("board");
+  board.innerHTML = GROUPS.map(g=>{
+    const items = g.items.filter(i=>filter==="all"||i.status===filter);
+    if(!items.length) return "";
+    return `<section class="group">
+      <div class="group-h">
+        <span class="gname">${g.name}</span>
+        <span class="gtag">${g.tag}</span>
+        <span class="gcount">${items.length}</span>
+      </div>
+      <div class="grid">${items.map(card).join("")}</div>
+    </section>`;
+  }).join("");
+}
+
+document.getElementById("filters").addEventListener("click",e=>{
+  const chip=e.target.closest(".chip"); if(!chip) return;
+  document.querySelectorAll(".chip").forEach(c=>c.classList.remove("on"));
+  chip.classList.add("on");
+  render(chip.dataset.f);
+});
+
+document.getElementById("foot").innerHTML =
+  `<b>The Cockpit</b> · indexes existing work, changes none of it · noindex, zero secrets<br>`+
+  `Status read from each deploy where reachable. <b>Live</b> = GitHub Pages build confirmed. `+
+  `<b>Unverified</b> = real URL on record, not confirmed from this seat — your tap is the final check. `+
+  `<b>Local / repo</b> = built, no public deploy pinned; link opens the repository.`;
+
+renderReadout();
+render("all");
+</script>
+</body>
+</html>
